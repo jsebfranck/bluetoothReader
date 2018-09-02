@@ -6,6 +6,7 @@ import android.support.v7.app.AppCompatActivity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Switch
+import com.jsebfranck.thermopeanut.listeners.OnDiscoveredDeviceListener
 
 
 class MainActivity : AppCompatActivity() {
@@ -38,8 +39,11 @@ class MainActivity : AppCompatActivity() {
         val layout = findViewById<LinearLayout>(R.id.mainLayout)
         val deviceButton = Button(this)
         deviceButton.text = "${device.address}  ${device.name}"
+
         deviceButton.setOnClickListener {
-            connector.getDeviceInfos(device)
+            connector.stopScan()
+            findViewById<Switch>(R.id.scanSwitch).isChecked = false
+            startActivity(DeviceInfosActivity.newIntent(this, device))
         }
         layout.addView(deviceButton)
     }

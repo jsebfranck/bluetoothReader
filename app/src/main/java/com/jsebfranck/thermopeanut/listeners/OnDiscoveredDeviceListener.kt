@@ -1,4 +1,4 @@
-package com.jsebfranck.thermopeanut
+package com.jsebfranck.thermopeanut.listeners
 
 import android.bluetooth.BluetoothDevice
 

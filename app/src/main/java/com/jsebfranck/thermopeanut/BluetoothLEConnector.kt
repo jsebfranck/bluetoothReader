@@ -3,6 +3,8 @@ package com.jsebfranck.thermopeanut
 import android.app.Activity
 import android.bluetooth.*
 import android.util.Log
+import com.jsebfranck.thermopeanut.listeners.OnDeviceReadListener
+import com.jsebfranck.thermopeanut.listeners.OnDiscoveredDeviceListener
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -22,7 +24,7 @@ class BluetoothLEConnector {
         log("Bluetooth enable=${bluetoothAdapter.isEnabled}")
 
         this.scanCallback = BluetoothAdapter.LeScanCallback { device, _, _ ->
-            activity.runOnUiThread {
+            _activity.runOnUiThread {
                 if (!foundDevices.containsKey(device.address)) {
                     foundDevices.put(device.address, device)
 
@@ -48,8 +50,10 @@ class BluetoothLEConnector {
         this.onDiscoveredDeviceListener = onDiscoveredDeviceListener
     }
 
-    fun getDeviceInfos(device: BluetoothDevice) {
-        log("Get device infos ${device.address}  ${device.name}")
+    fun getDeviceInfos(deviceAddress: String, onDeviceReadListener: OnDeviceReadListener) {
+        val device = bluetoothAdapter.getRemoteDevice(deviceAddress)
+
+        onDeviceReadListener.onRawMessage(device, "Get device infos ${device.address}  ${device.name}")
 
         val gattCallback = object : BluetoothGattCallback() {
             val characteristicsToRead = LinkedList<BluetoothGattCharacteristic>()
@@ -63,7 +67,7 @@ class BluetoothLEConnector {
                     if (!status) {
                         handleReadError(gatt)
                     }
-                    log("${device.address}  ${device.name} try read characteristic: $status}")
+                    onDeviceReadListener.onRawMessage(device, "Try read characteristic: $status}")
                 } else if (!descriptorsToRead.isEmpty()) {
                     val descriptor = descriptorsToRead.pop()
 
@@ -71,7 +75,7 @@ class BluetoothLEConnector {
                     if (!status) {
                         handleReadError(gatt)
                     }
-                    log("${device.address}  ${device.name} try read descriptor: $status}")
+                    onDeviceReadListener.onRawMessage(device, "Try read descriptor: $status}")
                 }
             }
 
@@ -86,20 +90,20 @@ class BluetoothLEConnector {
                                                  newState: Int) {
 
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    log("${device.address}  ${device.name} Connection changed: $status $newState => Connected")
+                    onDeviceReadListener.onRawMessage(device, "Connection changed: $status $newState => Connected")
 
                     val isServiceDiscoveryStarted = gatt.discoverServices()
-                    log("${device.address}  ${device.name} Service discovery started=$isServiceDiscoveryStarted")
+                    onDeviceReadListener.onRawMessage(device, "Service discovery started=$isServiceDiscoveryStarted")
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    log("${device.address}  ${device.name} Connection changed: $status $newState => Disconnected")
+                    onDeviceReadListener.onRawMessage(device, "Connection changed: $status $newState => Disconnected")
                 } else {
-                    log("${device.address}  ${device.name} Connection changed: $status $newState => ?")
+                    onDeviceReadListener.onRawMessage(device, "Connection changed: $status $newState => ?")
                 }
             }
 
             override// New services discovered
             fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-                log("${device.address}  ${device.name} Services size: ${gatt.services.size}")
+                onDeviceReadListener.onRawMessage(device, "Services count: ${gatt.services.size}")
 
                 gatt.services.forEach {
                     it.characteristics.forEach {
@@ -117,16 +121,16 @@ class BluetoothLEConnector {
             fun onCharacteristicRead(gatt: BluetoothGatt,
                                      characteristic: BluetoothGattCharacteristic,
                                      status: Int) {
-                log("${device.address}  ${device.name} Characteristic readed: $status ${characteristic.value}") // BluetoothGatt.GATT_SUCCESS
+                onDeviceReadListener.onRawMessage(device, "Characteristic readed: $status ${characteristic.value}") // BluetoothGatt.GATT_SUCCESS
                 readNext(gatt)
             }
 
             override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
-                log("${device.address}  ${device.name} Characteristic changed")
+                onDeviceReadListener.onRawMessage(device, "Characteristic changed")
             }
 
             override fun onDescriptorRead(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
-                log("${device.address}  ${device.name} Descriptor readed: $status")
+                onDeviceReadListener.onRawMessage(device, "Descriptor readed: $status")
             }
         }
 
