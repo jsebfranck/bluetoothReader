@@ -53,15 +53,32 @@ class BluetoothLEConnector {
 
         val gattCallback = object : BluetoothGattCallback() {
             val characteristicsToRead = LinkedList<BluetoothGattCharacteristic>()
-            var descriptorsToRead = LinkedList<BluetoothGattDescriptor>()
+            val descriptorsToRead = LinkedList<BluetoothGattDescriptor>()
+            var readFailsCount = 0
 
             fun readNext(gatt: BluetoothGatt) {
                 if (!characteristicsToRead.isEmpty()) {
                     val characteristic = characteristicsToRead.pop()
-                    log("${device.address}  ${device.name} try read characteristic: ${gatt.readCharacteristic(characteristic)}")
+                    val status = gatt.readCharacteristic(characteristic)
+                    if (!status) {
+                        handleReadError(gatt)
+                    }
+                    log("${device.address}  ${device.name} try read characteristic: $status}")
                 } else if (!descriptorsToRead.isEmpty()) {
                     val descriptor = descriptorsToRead.pop()
-                    log("${device.address}  ${device.name} try read descriptor: ${gatt.readDescriptor(descriptor)}")
+
+                    val status = gatt.readDescriptor(descriptor)
+                    if (!status) {
+                        handleReadError(gatt)
+                    }
+                    log("${device.address}  ${device.name} try read descriptor: $status}")
+                }
+            }
+
+            fun handleReadError(gatt: BluetoothGatt) {
+                readFailsCount++
+                if (readFailsCount < 5) {
+                    readNext(gatt)
                 }
             }
 
